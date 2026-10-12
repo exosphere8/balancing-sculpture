@@ -1,5 +1,46 @@
+# --- Manim render output -------------------------------------------------
+# The final video is copied to web/assets/ by render.py; the raw cache is not kept.
 media/
+*.mp4.part
+partial_movie_files/
+
+# --- Python ----------------------------------------------------------------
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# --- Virtual environments --------------------------------------------------
 venv/
 .venv/
+env/
+ENV/
+
+# --- LaTeX leftovers (Manim's TeX cache) ------------------------------------
+*.aux
+*.log
+*.dvi
+Tex/
+
+# --- Editors / OS ----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Local env files -------------------------------------------------------
+.env
+.env.*
