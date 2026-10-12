@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Balancing Sculpture — physics &amp; math</title>
+  <meta name="description" content="Why a steel figure balanced on one foot never falls: centre of mass, torque, and the physical pendulum, with a live simulation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">Physics of a viral sculpture</p>
+    <h1>It looks like it <em>defies</em> physics.<br>It's a pendulum in disguise.</h1>
+    <p class="lede">A steel figure stands on one toe on a tiny plate, arms swept back, wobbling but never falling.
+      The secret is two heavy weights hanging on long curved arms, which pull the centre of mass
+      <strong>below</strong> the foot. Tip it, and gravity pulls it back.</p>
+    <nav class="toc">
+      <a href="#film">Animation</a><a href="#lab">Live lab</a><a href="#math">The math</a><a href="#try">Check the video</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ================================================= FILM -->
+    <section id="film" class="card">
+      <div class="section-head">
+        <span class="num">01</span>
+        <h2>The animation</h2>
+        <p>Rendered in Python with Manim from the same physics model the page uses.</p>
+      </div>
+      <video controls preload="metadata" poster="assets/poster.jpg" playsinline>
+        <source src="assets/balancing_sculpture.mp4" type="video/mp4">
+        Your browser can't play this video. <a href="assets/balancing_sculpture.mp4">Download it</a>.
+      </video>
+    </section>
+
+    <!-- ================================================= LAB -->
+    <section id="lab" class="card">
+      <div class="section-head">
+        <span class="num">02</span>
+        <h2>Live lab</h2>
+        <p>Drag the sculpture to tip it. Change the masses and arm geometry and watch the centre of mass, the period and the stability change.</p>
+      </div>
+
+      <div class="lab">
+        <div class="stage">
+          <canvas id="sim" aria-label="Simulation of the balancing sculpture. Drag to tip it."></canvas>
+          <div class="stage-bar">
+            <button id="btn-play" class="btn">Pause</button>
+            <button id="btn-kick" class="btn">Tip 15°</button>
+            <button id="btn-reset" class="btn ghost">Reset</button>
+            <span id="status" class="badge stable">Stable</span>
+          </div>
+        </div>
+
+        <aside class="panel">
+          <div class="presets">
+            <button class="chip active" data-preset="sculpture">The sculpture</button>
+            <button class="chip" data-preset="bare">No weights</button>
+            <button class="chip" data-preset="short">Short arms</button>
+            <button class="chip" data-preset="lopsided">Unbalanced</button>
+          </div>
+
+          <fieldset>
+            <legend>Figure</legend>
+            <label>mass <output data-for="mf"></output><input type="range" id="mf" min="20" max="600" step="10"></label>
+          </fieldset>
+          <fieldset>
+            <legend>Left weight</legend>
+            <label>mass <output data-for="ml"></output><input type="range" id="ml" min="0" max="600" step="10"></label>
+            <label>reach x <output data-for="xl"></output><input type="range" id="xl" min="-30" max="-2" step="0.5"></label>
+            <label>drop y <output data-for="yl"></output><input type="range" id="yl" min="-45" max="15" step="0.5"></label>
+          </fieldset>
+          <fieldset>
+            <legend>Right weight</legend>
+            <label>mass <output data-for="mr"></output><input type="range" id="mr" min="0" max="600" step="10"></label>
+            <label>reach x <output data-for="xr"></output><input type="range" id="xr" min="2" max="30" step="0.5"></label>
+            <label>drop y <output data-for="yr"></output><input type="range" id="yr" min="-45" max="15" step="0.5"></label>
+          </fieldset>
+          <fieldset>
+            <legend>Motion</legend>
+            <label>damping c <output data-for="damp"></output><input type="range" id="damp" min="0" max="0.05" step="0.001"></label>
+          </fieldset>
+        </aside>
+      </div>
+
+      <div class="readouts" id="readouts">
+        <div><span>Total mass M</span><b id="r-M"></b></div>
+        <div><span>Centre of mass (x, y)</span><b id="r-com"></b></div>
+        <div><span>Depth below foot d</span><b id="r-d"></b></div>
+        <div><span>Σ m·x (tipping moment)</span><b id="r-mx"></b></div>
+        <div><span>Moment of inertia I</span><b id="r-I"></b></div>
+        <div><span>Stiffness M g d</span><b id="r-k"></b></div>
+        <div><span>Period T</span><b id="r-T"></b></div>
+        <div><span>Equivalent pendulum</span><b id="r-L"></b></div>
+      </div>
+
+      <div class="plots">
+        <figure>
+          <canvas id="plot-theta"></canvas>
+          <figcaption>θ(t) — the last 10 seconds of motion</figcaption>
+        </figure>
+        <figure>
+          <canvas id="plot-U"></canvas>
+          <figcaption>Potential energy U(θ). A valley means stable, a hill means it falls.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ================================================= MATH -->
+    <section id="math" class="card prose">
+      <div class="section-head">
+        <span class="num">03</span>
+        <h2>The math, step by step</h2>
+        <p>Estimated values read off the video: a 160 g figure and two steel weights of 240 g and 200 g. Pivot at the origin, <i>y</i> up.</p>
+      </div>
+
+      <table class="parts">
+        <thead><tr><th>Part</th><th>Mass</th><th>x</th><th>y</th></tr></thead>
+        <tbody id="parts-body"></tbody>
+      </table>
+
+      <h3>1 · Equilibrium: no net torque</h3>
+      <p>Gravity acts at each mass. About the foot, the torque is the weight times the horizontal lever arm. For the upright position to be an equilibrium, the combined centre of mass must sit directly under the foot:</p>
+      <div class="eq">$$\sum \tau = -g\sum_i m_i x_i = 0 \quad\Longleftrightarrow\quad x_{\text{cm}} = 0$$</div>
+      <div class="eq num">$$160(0.5) + 240(-12) + 200(14) = 80 - 2880 + 2800 = 0\ \checkmark$$</div>
+      <p>That is why the arms can look lopsided: the heavier weight sits closer in, the lighter one farther out.</p>
+
+      <h3>2 · Stability: where is the centre of mass vertically?</h3>
+      <div class="eq">$$y_{\text{cm}} = \frac{\sum m_i y_i}{M} = \frac{160(8) - 240(28) - 200(16)}{600} = -14.4\ \text{cm}$$</div>
+      <p>The centre of mass is <b class="warm">d = 14.4 cm below the foot</b>. In general the sculpture is stable when the weights win:</p>
+      <div class="eq">$$m_1 L_1 + m_2 L_2 \;>\; m_f\, h_f \qquad (9920 > 1280)$$</div>
+
+      <h3>3 · Potential energy and restoring torque</h3>
+      <p>Tilt the whole rigid body by an angle θ. The centre of mass swings on a circle of radius <i>d</i> around the foot, so its height is <span class="inline">\(-d\cos\theta\)</span>:</p>
+      <div class="eq">$$U(\theta) = -Mgd\cos\theta, \qquad \tau = -\frac{dU}{d\theta} = -Mgd\sin\theta$$</div>
+      <p><span class="inline">\(U\)</span> is lowest at θ = 0. Any tilt raises the centre of mass, and the torque always points back to upright.</p>
+
+      <h3>4 · Equation of motion: a physical pendulum</h3>
+      <div class="eq">$$I\,\ddot\theta = -Mgd\sin\theta - c\,\dot\theta, \qquad I = \sum_i m_i\,(x_i^2 + y_i^2)$$</div>
+      <p>The damping term <i>c</i> stands for air drag and friction at the toe. Moment of inertia, part by part:</p>
+      <div class="eq num">$$I = 160(64.25) + 240(928) + 200(452) \approx 3.23\times10^{5}\ \text{g·cm}^2 = 0.0323\ \text{kg·m}^2$$</div>
+
+      <h3>5 · The period</h3>
+      <p>For small angles, <span class="inline">\(\sin\theta\approx\theta\)</span> and the motion is simple harmonic:</p>
+      <div class="eq">$$\omega = \sqrt{\frac{Mgd}{I}} = \sqrt{\frac{0.848}{0.0323}} \approx 5.12\ \text{rad/s}, \qquad T = \frac{2\pi}{\omega} \approx 1.23\ \text{s}$$</div>
+      <p>That's the same period as a simple pendulum <span class="inline">\(L_{\text{eq}} = I/(Md) \approx 37\ \text{cm}\)</span> long, even though the centre of mass is only 14 cm down. Weights far from the foot inflate <i>I</i> and give the slow, floaty sway.</p>
+
+      <h3>6 · Remove the weights</h3>
+      <p>The bare figure has its centre of mass 8 cm <em>above</em> the toe, so the sign flips and upright becomes a hilltop:</p>
+      <div class="eq">$$\ddot\theta = +\frac{g}{h}\,\theta \;\Rightarrow\; \theta(t) = \theta_0\cosh(\lambda t), \quad \lambda=\sqrt{g/h}\approx 11.1\ \text{s}^{-1}$$</div>
+      <div class="eq num">$$1^\circ \to 30^\circ \text{ when } \cosh(\lambda t)=30 \;\Rightarrow\; t \approx 0.37\ \text{s}$$</div>
+      <p>Without the weights it would topple in about a third of a second. Try the <em>No weights</em> preset in the lab.</p>
+    </section>
+
+    <!-- ================================================= CHECK -->
+    <section id="try" class="card">
+      <div class="section-head">
+        <span class="num">04</span>
+        <h2>Check it against the real video</h2>
+        <p>Time a few swings of the real sculpture, enter the period, and solve backwards for how far below the foot its centre of mass really sits: <span class="inline">\(d = 4\pi^2 I /(M g T^2)\)</span>.</p>
+      </div>
+      <div class="calc">
+        <label>Measured period T (s) <input type="number" id="calc-T" value="1.23" min="0.1" step="0.01"></label>
+        <label>Total mass M (g) <input type="number" id="calc-M" value="600" min="1" step="1"></label>
+        <label>Moment of inertia I (kg·m²) <input type="number" id="calc-I" value="0.0323" min="0.0001" step="0.0001"></label>
+        <p class="calc-out">d ≈ <b id="calc-d">—</b></p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Physics model, Manim scene and simulation data in Python · interactive page in plain HTML/CSS/JS.</p>
+  </footer>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+  <script defer src="app.js"></script>
+</body>
+</html>
